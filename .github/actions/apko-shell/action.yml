@@ -1,0 +1,42 @@
+name: 'apko-shell'
+description: 'Run scripts in minimal containers using Wolfi packages'
+inputs:
+  packages:
+    description: 'Comma-separated list of packages to install'
+    required: false
+    default: ''
+  run:
+    description: 'Commands to run'
+    required: true
+  shell:
+    description: 'Shell to use'
+    required: false
+    default: '/bin/sh'
+runs:
+  using: 'composite'
+  steps:
+    - name: Install apko-shell
+      shell: bash
+      run: |
+        echo "Installing apko-shell..."
+        go install github.com/joshrwolf/apko-shell/cmd/apko-shell@latest
+        
+    - name: Run commands
+      shell: bash
+      run: |
+        # Create a temporary apko-shell script
+        SCRIPT_FILE=$(mktemp /tmp/apko-shell-script.XXXXXX.sh)
+        
+        # Write the apko-shell script with proper shebangs
+        cat > "$SCRIPT_FILE" << 'APKO_SHELL_EOF'
+        #!/usr/bin/env apko-shell
+        #!apko-shell -p ${{ inputs.packages }}
+        #!apko-shell --shell=${{ inputs.shell }}
+        
+        ${{ inputs.run }}
+        APKO_SHELL_EOF
+        
+        chmod +x "$SCRIPT_FILE"
+        
+        # Run the script
+        apko-shell "$SCRIPT_FILE"

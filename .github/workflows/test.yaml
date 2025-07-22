@@ -1,0 +1,55 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@d35c59abb061a4a6fb18e82ac0862c26744d6ab5 # v5.5.0
+      with:
+        go-version: 'stable'
+        check-latest: true
+
+    - name: Build apko-shell
+      run: |
+        go build -o apko-shell ./cmd/apko-shell
+        sudo mv apko-shell /usr/local/bin/
+        sudo chmod +x /usr/local/bin/apko-shell
+
+    - name: Test basic command
+      uses: ./.github/actions/apko-shell
+      with:
+        packages: curl,jq
+        run: |
+          echo "Testing apko-shell GitHub Action"
+          curl -s https://api.github.com/meta | jq -r '.web'
+
+    - name: Test Python script
+      uses: ./.github/actions/apko-shell
+      with:
+        packages: python3
+        run: |
+          python3 -c "
+          import sys
+          print(f'Python {sys.version}')
+          print('Hello from apko-shell!')
+          "
+
+    - name: Test with bash shell
+      uses: ./.github/actions/apko-shell
+      with:
+        packages: bash,coreutils
+        shell: /bin/bash
+        run: |
+          echo "Running with bash"
+          echo "Current date: $(date)"
+          echo "Hostname: $(hostname)"
